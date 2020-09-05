@@ -1,0 +1,93 @@
+# Summarize Canvas SIS Import Logs.
+# This program retrieves a Canvas Imports Log file from the web,
+# and displays selected details from that file with oldest import first.
+# The program starts by reading a paramters file to acquire the URL
+# of the log file and an access token (gengerated inside of Canvas).
+# It then uses HTTP GET to retrieve the JSON-formatted log file referenced
+# by the URL, and walks through its contents.
+# If a reference to an errors/warnings file
+# is found, that file is also retrieved and the number of references to
+# each import file type are counted.
+# Written Sep 2020 by Jim Dugan, in Python 3.8
+#
+# IMPORTS
+#
+import json
+import requests
+import base64
+#
+# Function to summarize the number of errors/warnings in the error file
+#
+def summarizeFile(fileURL, HTTPHeader):
+   print ('       Counting errors file')
+   HTTPResponse = requests.get(fileURL, headers=HTTPHeader)
+   print ('       HTTP Get:', HTTPResponse)
+   warningsFile = HTTPResponse.content.splitlines()
+   fileNames = []
+   fileCounts = []
+   for line in warningsFile:
+      fileName = line.decode('utf-8').split(',')[1]
+      if fileName in fileNames:
+         fileCounts[fileNames.index(fileName)] += 1
+      else:
+         if fileName != 'file':
+            fileNames.append(fileName)
+            fileCounts.append(1)
+   for warnFile, warnCount in zip(fileNames, fileCounts):
+      print ('      ', warnFile, warnCount)
+   warningsFile = ''
+#
+# Main Program
+#
+# Read the paramters file and decode and reformat elements
+#
+fileName = 'C:\\Users\\JTDDM\\Documents\\PythonProgs\\ImportLogParams.txt'
+parameters = ''
+with open(fileName, 'r') as parametersFile:
+    parameters = parametersFile.readlines()
+SISImportsURL = base64.b64decode(parameters[0]).decode('ascii')
+SISImportsToken = base64.b64decode(parameters[1]).decode('ascii')
+SISImportsBearer = 'Bearer ' + SISImportsToken
+SISImportsHeader = {'Authorization': SISImportsBearer}
+#
+# HTTP GET the log file
+#
+print ('Retrieving Import Log')
+HTTPResponse = requests.get(SISImportsURL, headers=SISImportsHeader)
+print ('HTTP Get:', HTTPResponse)
+impObj = json.loads(HTTPResponse.content)
+impCount = len(impObj['sis_imports'])
+#
+# Loop through the main entries in the import log, oldest first
+#
+for i in range (impCount-1, -1, -1):
+   oneImport = impObj['sis_imports'][i]
+   print ('')
+   pLine = 'Import ID: ' + str(oneImport['id'])
+   pLine += ' Started at: ' + str(oneImport['started_at'])
+   pLine += ' Ended at: ' + str(oneImport['ended_at'])
+   print (pLine)
+   print ('   Workflow State:',oneImport['workflow_state'])
+   print ('   Submitted by:',oneImport['user']['name'])
+   print ('   Supplied Batches:',oneImport['data']['supplied_batches'])
+   if 'diffing_data_set_identifier' in oneImport:
+      print ('   Diffing Data Set Identifier:',oneImport['diffing_data_set_identifier'])
+   if 'diffed_against_sis_batch_id' in oneImport['data']:
+      print('   diffed_against_sis_batch_id:',oneImport['data']['diffed_against_sis_batch_id'])
+   for statName, statValue in oneImport['data']['counts'].items():
+      if statValue != 0:
+         print ('      ',statName,statValue)
+   for statClass in oneImport['data']['statistics']:
+      if type(oneImport['data']['statistics'][statClass]) is dict:
+         for statName, statValue in oneImport['data']['statistics'][statClass].items():
+            if statValue != 0:
+               print ('      ',statClass, statName, statValue)
+   if 'errors_attachment' in oneImport:
+      print ('   Errors file name:',oneImport['errors_attachment']['display_name'])
+      warningsURL = str(oneImport['errors_attachment']['url'])
+      summarizeFile (warningsURL, SISImportsHeader)
+#
+# Conclude program
+#
+print('')
+response = input('Press Enter to end program:')
