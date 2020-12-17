@@ -1,0 +1,79 @@
+# Python program to list the names of standard reports in the Canvas LMS.
+# These are the reports available via Admin > Settings > Reports.
+# List is requested by Canvas API using python request.get.
+#
+# Imports
+#
+import json
+import requests
+import base64
+import time
+import sys
+#
+# FUNCTION DEFINTIONS
+#
+# Function for displaying the JSON-formatted contents of the one report definition
+#
+def disp_report(repDef):
+   if type(repDef) is not dict:
+      return 0
+   if 'title' not in repDef:
+      return 0
+   print ('\r\nREPORT: ', entry['title'])
+   if 'report' not in repDef:
+      return 0
+   print ('     API Report ID: ', entry['report'])
+   if 'last_run' not in repDef:
+      return 1
+   lastRun = repDef['last_run']
+   if type(lastRun) is not dict:
+      return 1
+   if 'id' not in lastRun:
+      return 1
+   print ('     id: ',lastRun['id'])
+   if 'status' not in lastRun:
+      return 1
+   print ('     status: ',lastRun['status'])
+   if 'created_at' not in lastRun:
+      return 1
+   print ('     created: ',lastRun['created_at'])
+   if 'started_at' not in lastRun:
+      return 1
+   print ('     started: ',lastRun['started_at'])
+   if 'ended_at' not in lastRun:
+      return 1
+   print ('     ended: ',lastRun['ended_at'])
+   return 1
+#
+# MAIN ROUTINE
+#
+# Read the paramters file and decode and reformat elements.
+# The paramters file contains the base URL for the standard Canvas reports
+# and an access token that was created within the Canvas LMS. These
+# are encoded just to avoid having them reside as plain text in a local
+# file.
+#
+fileName = 'C:\\Users\\JTDDM\\Documents\\PythonProgs\\ReportParams.txt'
+parameters = ''
+with open(fileName, 'r') as parametersFile:
+    parameters = parametersFile.readlines()
+baseURL = base64.b64decode(parameters[0]).decode('ascii')
+reportsToken = base64.b64decode(parameters[1]).decode('ascii')
+reportsBearer = 'Bearer ' + reportsToken
+reportsHeader = {'Authorization': reportsBearer}
+#
+# Get a list of reports from Canvas and process it
+#
+print ('Requesting list of reports.')
+reportURL = baseURL
+print (reportURL)
+HTTPResponse = requests.get(reportURL, headers=reportsHeader)
+HTTPStatus = HTTPResponse.status_code
+print ('HTTP Status:', HTTPStatus)
+if HTTPStatus != 200:
+   sys.exit()
+HTTPContent = json.loads(HTTPResponse.content)
+entries = len(HTTPContent)
+print ('Number of reports listed: ',entries)
+for entry in HTTPContent:
+   retCode = disp_report(entry)
