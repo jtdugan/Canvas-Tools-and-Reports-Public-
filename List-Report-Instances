@@ -1,0 +1,85 @@
+# Python program to list the extant instances of a standard Canvas Report.
+# The program requires the report type as known to Canvas API definitions,
+# and uses python request.get to retrieve the list of report instances.
+#
+# Imports
+#
+import json
+import requests
+import base64
+import time
+import sys
+#
+# FUNCTION DEFS
+#
+# Function to display the JSON-formatted contents of the one report definition
+#
+def disp_report(repDef):
+   if type(repDef) is not dict:
+      return 0
+   repID = ''
+   repType = ''
+   repStatus = ''
+   repCreated = ''
+   repStarted = ''
+   repEnded = ''
+   repAttachment = ''
+   repURL = ''
+   if 'id' in repDef:
+      repID = repDef['id']
+   if 'report' in repDef:
+      repType = repDef['report']
+   if 'status' in repDef:
+      repStatus = repDef['status']
+   if 'created_at' in repDef:
+      repCreated = repDef['created_at']
+   if 'started_at' in repDef:
+      repStarted = repDef['started_at']
+   if 'ended_at' in repDef:
+      repEnded = repDef['ended_at']
+   print ('\r\nReport ID: ', repID, ', Report Type: ', repType, ', Status: ', repStatus)
+   print ('   Created: ', repCreated)
+   print ('   Started: ', repStarted)
+   print ('   Ended: ', repEnded)
+   if 'attachment' in repDef:
+      repAttachment = repDef['attachment']
+   if type(repAttachment) is not dict:
+      return 1
+   if 'url' in repAttachment:
+      repURL = repAttachment['url']
+      print('   URL: ', repURL)
+   return 1
+#
+# MAIN ROUTINE
+#
+# Read the paramters file and decode and reformat elements.
+# The paramters file contains the base URL for the standard Canvas reports
+# and an access token that was created within the Canvas LMS. These
+# are encoded just to avoid having them reside as plain text in a local
+# file.
+#
+fileName = 'C:\\Users\\JTDDM\\Documents\\PythonProgs\\ReportParams.txt'
+parameters = ''
+with open(fileName, 'r') as parametersFile:
+    parameters = parametersFile.readlines()
+baseURL = base64.b64decode(parameters[0]).decode('ascii')
+reportsToken = base64.b64decode(parameters[1]).decode('ascii')
+reportsBearer = 'Bearer ' + reportsToken
+reportsHeader = {'Authorization': reportsBearer}
+#
+# Get a list of reports of a specified type 
+#
+print ('Requesting list of reports.')
+reportURL = baseURL
+# reportType must contain the type of report as known to Canvas APIs
+reportType = 'user_course_access_log_csv' # reportType GOES HERE
+HTTPResponse = requests.get(reportURL + reportType, headers=reportsHeader)
+HTTPStatus = HTTPResponse.status_code
+print ('HTTP Status:', HTTPStatus)
+if HTTPStatus != 200:
+   sys.exit()
+HTTPContent = json.loads(HTTPResponse.content)
+entries = len(HTTPContent)
+print ('Number of reports listed: ',entries)
+for entry in HTTPContent:
+   retCode = disp_report(entry)
