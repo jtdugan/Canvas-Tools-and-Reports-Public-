@@ -1,0 +1,48 @@
+# Deletes an instance of a standard Canvas report by Canvas API.
+# Requires the name of a report as known to Canvas APIs,
+# and Requires the ID of a specific instance of that report.
+# Uses python request.delete to perform the HTTP DELETE
+#
+# Import
+#
+import json
+import requests
+import base64
+import time
+import sys
+#
+# Read the paramters file and decode and reformat elements.
+# The paramters file contains the base URL for the standard Canvas reports
+# and an access token that was created within the Canvas LMS. These
+# are encoded just to avoid having them reside as plain text in a local
+# file.
+#
+fileName = 'C:\\Users\\JTDDM\\Documents\\PythonProgs\\ReportParams.txt'
+parameters = ''
+with open(fileName, 'r') as parametersFile:
+    parameters = parametersFile.readlines()
+baseURL = base64.b64decode(parameters[0]).decode('ascii')
+reportsToken = base64.b64decode(parameters[1]).decode('ascii')
+reportsBearer = 'Bearer ' + reportsToken
+reportsHeader = {'Authorization': reportsBearer}
+#
+# IDENTIFY TARGET REPORT HERE
+#
+# reportType identifies report as named in Canvas APIs
+reportType = 'user_course_access_log_csv'
+# reportID identifies a specific instance of that report
+reportID = '387'
+#
+# Request Deletion
+#
+print ('Requesting deletion of report ID ', reportID, ' of type ', reportType)
+HTTPResponse = requests.delete(baseURL + reportType + '/' + reportID, headers=reportsHeader)
+HTTPStatus = HTTPResponse.status_code
+print ('HTTP Status:', HTTPStatus)
+if HTTPStatus == 200:
+   print ('Request succeeded')
+if HTTPStatus == 404:
+   print ('The specified resource could not be found.')
+HTTPContent = json.loads(HTTPResponse.content)
+print ('HTTP Response Sring follows.')
+print (HTTPContent)
